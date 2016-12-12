@@ -24,7 +24,7 @@ type Job struct {
 
 type Worker struct {
 	ID       int32
-	JobQueue chan Job
+	jobQueue chan Job
 	idle     bool
 	die      bool
 	wait     bool
@@ -37,7 +37,7 @@ func (w *Worker) Run() {
 			if w.die {
 				return
 			}
-			job := <-w.JobQueue
+			job := <-w.jobQueue
 			w.idle = false
 			job.fn(job.Payload)
 			w.idle = true
@@ -50,8 +50,8 @@ func (w *Worker) Run() {
 
 type GoroutinePool struct {
 	maxWorkers  int32
-	LoadJobNum  int32
-	JobQueue    chan Job
+	doneJobs    int32
+	jobQueue    chan Job
 	jobQueueLen int32
 	workers     []*Worker
 	wg          *sync.WaitGroup
@@ -60,25 +60,26 @@ type GoroutinePool struct {
 }
 
 // new GoroutinePool
-func NewGoroutinePool(initWorkers int32, jobQueueLen int32, feedback bool) *GoroutinePool {
-	// if over `jobQueueLen`, will block
-	JobChannel := make(chan Job, jobQueueLen)
-	workers := make([]*Worker, jobQueueLen)
+func NewGoroutinePool(maxWorkers int32, jobQueueLen int32, feedback bool) *GoroutinePool {
+	jobQueue := make(chan Job, jobQueueLen)
+	workers := make([]*Worker, maxWorkers)
 	var wg sync.WaitGroup
 
 	pool := &GoroutinePool{
 		jobQueueLen: jobQueueLen,
-		JobQueue:    JobChannel,
+		jobQueue:    jobQueue,
 		wait:        true,
 		feedback:    feedback,
 		wg:          &wg,
 		workers:     workers,
-		LoadJobNum:  0,
-		maxWorkers:  initWorkers,
+		doneJobs:    0,
+		maxWorkers:  maxWorkers,
 	}
 	// start worker
 	pool.Start()
+	// start monitor
 	pool.Monitor()
+
 	return pool
 }
 
@@ -92,8 +93,8 @@ func (pool *GoroutinePool) AddJob(fn func(payload PayloadType), payload PayloadT
 	if pool.wait {
 		pool.wg.Add(1)
 	}
-	pool.LoadJobNum++
-	pool.JobQueue <- job
+	pool.doneJobs++
+	pool.jobQueue <- job
 }
 
 func (pool *GoroutinePool) Monitor() {
@@ -104,10 +105,10 @@ func (pool *GoroutinePool) Monitor() {
 	var speed int32
 	interval := time.NewTicker(10 * time.Second)
 
-	// real-time
-	var realLastDone int32
-	realLastDone = pool.jobQueueLen
-	var realSpeed int32
+	// real-time speed
+	var realtimeLastDone int32
+	realtimeLastDone = pool.jobQueueLen
+	var realtimeSpeed int32
 
 	// max average speed
 	var maxAverageSpeed int32
@@ -125,43 +126,43 @@ func (pool *GoroutinePool) Monitor() {
 				tCurrent := time.Now()
 				costDuration := tCurrent.Sub(tStart)
 
-				// real-speed
-				realTmpSpeed := (pool.LoadJobNum - realLastDone)
+				// real-time speed
+				tmpRealtimeSpeed := (pool.doneJobs - realtimeLastDone)
 
-				realSpeed = realTmpSpeed
-				realLastDone = pool.LoadJobNum
+				realtimeSpeed = tmpRealtimeSpeed
+				realtimeLastDone = pool.doneJobs
 
-				fmt.Printf("\r Start at: %s, Time over: %s, Worker Speed: %d, Real Speed: %d, Current Workers: %d, Load Job: %d", tStart.Format("15:04:05.000"), costDuration.String(), speed, realSpeed, pool.maxWorkers, pool.LoadJobNum)
+				fmt.Printf("\r Start at: %s, Time over: %s, Worker Speed: %d, Real Speed: %d, Current Workers: %d, Load Job: %d", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, pool.maxWorkers, pool.doneJobs)
 
-			// feedback mechanism!
 			case <-interval.C:
+				// feedback mechanism!
 				// average speed
-				tmpSpeed := (pool.LoadJobNum - lastDone) / 10
+				tmpSpeed := (pool.doneJobs - lastDone) / 10
 
 				if tmpSpeed > maxAverageSpeed {
 					maxAverageSpeed = tmpSpeed
 				}
 
 				if pool.feedback {
-					var reMaxWorkers int32
-					reMaxWorkers = pool.maxWorkers + tmpSpeed
+					var feedbackMaxWorkers int32
+					feedbackMaxWorkers = pool.maxWorkers + tmpSpeed
 
 					if speed > tmpSpeed {
-						reMaxWorkers = pool.maxWorkers - speed/2
+						feedbackMaxWorkers = pool.maxWorkers - speed/2
 					}
 
-					if reMaxWorkers < maxAverageSpeed {
-						reMaxWorkers = maxAverageSpeed
+					if feedbackMaxWorkers < maxAverageSpeed {
+						feedbackMaxWorkers = maxAverageSpeed
 					}
-					if reMaxWorkers > pool.jobQueueLen {
-						reMaxWorkers = pool.jobQueueLen
+					if feedbackMaxWorkers > pool.jobQueueLen {
+						feedbackMaxWorkers = pool.jobQueueLen
 					}
-					// feedback and restart worker numbers
-					pool.reStart(reMaxWorkers)
+					// feedback worker numbers
+					pool.feedbackWorkers(feedbackMaxWorkers)
 				}
 
 				speed = tmpSpeed
-				lastDone = pool.LoadJobNum
+				lastDone = pool.doneJobs
 
 			case <-quit:
 				ticker.Stop()
@@ -190,7 +191,7 @@ func (pool *GoroutinePool) Start() {
 	for i := int32(0); i < pool.maxWorkers; i++ {
 		worker := &Worker{
 			ID:       int32(i),
-			JobQueue: pool.JobQueue,
+			jobQueue: pool.jobQueue,
 			wait:     pool.wait,
 			idle:     false,
 			die:      false,
@@ -201,15 +202,15 @@ func (pool *GoroutinePool) Start() {
 	}
 }
 
-func (pool *GoroutinePool) reStart(reMaxWorkers int32) {
-	if reMaxWorkers > pool.jobQueueLen {
+func (pool *GoroutinePool) feedbackWorkers(feedbackMaxWorkers int32) {
+	if feedbackMaxWorkers > pool.jobQueueLen {
 		return
 	}
-	if reMaxWorkers > pool.maxWorkers {
-		for i := pool.maxWorkers; i < reMaxWorkers; i++ {
+	if feedbackMaxWorkers > pool.maxWorkers {
+		for i := pool.maxWorkers; i < feedbackMaxWorkers; i++ {
 			worker := &Worker{
 				ID:       int32(i),
-				JobQueue: pool.JobQueue,
+				jobQueue: pool.jobQueue,
 				wait:     pool.wait,
 				idle:     false,
 				die:      false,
@@ -219,12 +220,12 @@ func (pool *GoroutinePool) reStart(reMaxWorkers int32) {
 			pool.workers[i] = worker
 		}
 	} else {
-		for i := reMaxWorkers; i < pool.maxWorkers; i++ {
+		for i := feedbackMaxWorkers; i < pool.maxWorkers; i++ {
 			pool.workers[i].die = true
 		}
 	}
 
-	pool.maxWorkers = reMaxWorkers
+	pool.maxWorkers = feedbackMaxWorkers
 }
 
 func (pool *GoroutinePool) Wait() {
