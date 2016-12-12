@@ -62,7 +62,7 @@ type GoroutinePool struct {
 // new GoroutinePool
 func NewGoroutinePool(maxWorkers int32, jobQueueLen int32, feedback bool) *GoroutinePool {
 	jobQueue := make(chan Job, jobQueueLen)
-	workers := make([]*Worker, maxWorkers)
+	workers := make([]*Worker, jobQueueLen)
 	var wg sync.WaitGroup
 
 	pool := &GoroutinePool{
@@ -118,13 +118,15 @@ func (pool *GoroutinePool) Monitor() {
 	ticker := time.NewTicker(1 * time.Second)
 	quit := make(chan struct{})
 
+	// time cost
 	tStart := time.Now()
+	var costDuration time.Duration
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
 				tCurrent := time.Now()
-				costDuration := tCurrent.Sub(tStart)
+				costDuration = tCurrent.Sub(tStart)
 
 				// real-time speed
 				tmpRealtimeSpeed := (pool.doneJobs - realtimeLastDone)
@@ -132,7 +134,7 @@ func (pool *GoroutinePool) Monitor() {
 				realtimeSpeed = tmpRealtimeSpeed
 				realtimeLastDone = pool.doneJobs
 
-				fmt.Printf("\r Start at: %s, Time over: %s, Worker Speed: %d, Real Speed: %d, Current Workers: %d, Load Job: %d", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, pool.maxWorkers, pool.doneJobs)
+				fmt.Printf("\r Start at: %s, time cost: %s, average speed: %d, read-time speed: %d, current workers: %d, done jobs: %d     ", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, pool.maxWorkers, pool.doneJobs)
 
 			case <-interval.C:
 				// feedback mechanism!
@@ -158,6 +160,8 @@ func (pool *GoroutinePool) Monitor() {
 						feedbackMaxWorkers = pool.jobQueueLen
 					}
 					// feedback worker numbers
+
+					fmt.Printf("\r Start at: %s, time cost: %s, average speed: %d, read-time speed: %d, current workers: %d, done jobs: %d     ", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, pool.maxWorkers, pool.doneJobs)
 					pool.feedbackWorkers(feedbackMaxWorkers)
 				}
 
@@ -203,9 +207,7 @@ func (pool *GoroutinePool) Start() {
 }
 
 func (pool *GoroutinePool) feedbackWorkers(feedbackMaxWorkers int32) {
-	if feedbackMaxWorkers > pool.jobQueueLen {
-		return
-	}
+	fmt.Println(feedbackMaxWorkers, pool.maxWorkers)
 	if feedbackMaxWorkers > pool.maxWorkers {
 		for i := pool.maxWorkers; i < feedbackMaxWorkers; i++ {
 			worker := &Worker{

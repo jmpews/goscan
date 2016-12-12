@@ -16,25 +16,31 @@ golang scanner framework, with goroutines pool and automatically adjusting the s
 ---
 
 ## Usage
-before run, set the `maxWorkers`, `jobQueueLen` and `feedback mechanism`
+
+#### before run
+
+* set [PayloadType type](https://github.com/jmpews/goscan/blob/master/pool.go#L16) (maybe i will add `relfect`)
+* set [`maxWorkers`, `jobQueueLen` and `feedback mechanism`](https://github.com/jmpews/goscan/blob/master/scanner.go#L26)
 
 ```
 // if you set a fixed number of goroutine, set feedback-mechanism `false` and initWorkers == jobQueueLen`
-// Example: pool = NewGoroutinePool(1000, 1000, false)
-// if you want feedback-mechanism, set `feedback = true`, initWorkers and jobQueueLen
-// Example: pool := NewGoroutinePool(1000, 20000, true)
+// Example: pool = NewGoroutinePool(100, 100, false)
+
+// if you use feedback-mechanism, set `feedback = true`, initWorkers and jobQueueLen
+// Example: pool := NewGoroutinePool(100, 1000, true)
 
 // 1000 initWorkers and 20000 jobQueueLen, with feedback mechanism
 pool := NewGoroutinePool(1000, 20000, true)
 ```
-config golang env
+
+#### config golang env
 
 ```
-# build go env
-> ./env.sh
+# build golang env
+> sh ./env.sh
 
 ```
-start scanner
+#### start scanner
 
 ```
 > go run scanner.go pool.go

@@ -23,7 +23,7 @@ func main() {
 	// if you set a fixed number of goroutine, set feedback-mechanism `false` and initWorkers == jobQueueLen`
 	// Example: pool = NewGoroutinePool(1000, 1000, false)
 	// if you want feedback-mechanism, set `feedback = true`, initWorkers and jobQueueLen
-	pool := NewGoroutinePool(1000, 20000, true)
+	pool := NewGoroutinePool(10, 100, true)
 
 	urlFile := "./wordpress.txt"
 	fd, err := os.Open(urlFile)
@@ -63,6 +63,8 @@ func fetchURL(targetURL PayloadType) {
 		},
 	}
 	requestURL := "http://" + string(targetURL)
+	// requestURL := "http://" + "baidu.com" + "/index.php"
+
 	parseRequestURL, _ := url.Parse(requestURL)
 	extraParams := url.Values{
 		"cperpage": {"1"},
