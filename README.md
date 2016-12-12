@@ -56,3 +56,11 @@ go get github.com/pborman/uuid
 # or
 # > go build scanner.go pool.go
 ```
+
+#### build in docker
+
+```
+$ git clone https://github.com/jmpews/goscan.git
+$ cd goscan/
+$ docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang:1.7 go get github.com/pborman/uuid && go build -v scanner.go pool.go
+```
