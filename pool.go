@@ -207,7 +207,6 @@ func (pool *GoroutinePool) Start() {
 }
 
 func (pool *GoroutinePool) feedbackWorkers(feedbackMaxWorkers int32) {
-	fmt.Println(feedbackMaxWorkers, pool.maxWorkers)
 	if feedbackMaxWorkers > pool.maxWorkers {
 		for i := pool.maxWorkers; i < feedbackMaxWorkers; i++ {
 			worker := &Worker{
