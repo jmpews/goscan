@@ -19,6 +19,7 @@ golang scanner framework, with goroutines pool and automatically adjusting the s
 
 #### before run
 
+* set `ulimit -n 100000`
 * set [PayloadType type](https://github.com/jmpews/goscan/blob/master/pool.go#L16) (maybe i will add `relfect`)
 * set [`maxWorkers`, `jobQueueLen` and `feedback mechanism`](https://github.com/jmpews/goscan/blob/master/scanner.go#L26)
 
