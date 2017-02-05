@@ -24,13 +24,13 @@ golang scanner framework, with goroutines pool and automatically adjusting the s
 * set [`maxWorkers`, `jobQueueLen` and `feedback mechanism`](https://github.com/jmpews/goscan/blob/master/scanner.go#L26)
 
 ```
-// if you set a fixed number of goroutine, set feedback-mechanism `false` and initWorkers == jobQueueLen`
+// if you set a fixed number of goroutine, set feedback-mechanism `false` and maxWorkers == jobCacheQueueLen`
 // Example: pool = NewGoroutinePool(100, 100, false)
 
-// if you use feedback-mechanism, set `feedback = true`, initWorkers and jobQueueLen
+// if you use feedback-mechanism, set `feedback = true`, maxWorkers and jobCacheQueueLen
 // Example: pool := NewGoroutinePool(100, 1000, true)
 
-// 1000 initWorkers and 20000 jobQueueLen, with feedback mechanism
+// 1000 maxWorkers and 20000 jobCacheQueueLen, with feedback mechanism
 pool := NewGoroutinePool(1000, 20000, true)
 ```
 
@@ -64,4 +64,10 @@ go get github.com/pborman/uuid
 $ git clone https://github.com/jmpews/goscan.git
 $ cd goscan/
 $ docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang:1.7 go get github.com/pborman/uuid && go build -v scanner.go pool.go
+```
+
+#### cross compilation
+
+```
+GOOS=linux GOARCH=amd64 go build -v scanner.go pool.go
 ```
