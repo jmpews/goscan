@@ -22,7 +22,7 @@ func main() {
 	// if you set a fixed number of goroutine, set feedback-mechanism `false`
 	// Example: pool = NewGoroutinePool(1000, 2000, false)
 	// if you want feedback-mechanism, set `feedback = true`, maxWorkers and jobQueueLen
-	pool := NewGoroutinePool(1000, 100000, true)
+	pool := NewGoroutinePool(10000, 100000, true)
 
 	urlFile := "./wordpress.txt"
 	fd, err := os.Open(urlFile)

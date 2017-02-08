@@ -6,18 +6,14 @@ golang scanner framework, with goroutines pool and automatically adjusting the s
 
 **Scan 391W wordpress sites in 30min.**
 
----
-
 ## Features
 * goroutines pool
 * workers feedback mechanism
 * monitor status
 
----
-
 ## Usage
 
-#### before run
+#### Before run
 
 * set `ulimit -n 100000`
 * set [PayloadType type](https://github.com/jmpews/goscan/blob/master/pool.go#L16) (maybe i will add `relfect`)

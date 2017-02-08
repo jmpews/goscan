@@ -129,6 +129,10 @@ func (pool *GoroutinePool) Monitor() {
 	tStart := time.Now()
 	var costDuration time.Duration
 
+	initWorkers := pool.maxWorkers
+
+	var DC bool = false
+
 	go func() {
 		for {
 			select {
@@ -151,21 +155,30 @@ func (pool *GoroutinePool) Monitor() {
 
 				if pool.feedback {
 					var feedbackMaxWorkers int32
-					feedbackMaxWorkers = pool.maxWorkers + (tmpSpeed-speed)*2
 
+					feedbackMaxWorkers = pool.maxWorkers
 					if tmpSpeed < speed {
-						feedbackMaxWorkers = pool.maxWorkers - (tmpSpeed - speed)
+						if DC == true {
+							feedbackMaxWorkers = pool.maxWorkers * 6 / 7
+							fmt.Printf("DoubleCheck Feedback \n")
+							DC = false
+						} else {
+							DC = true
+						}
+					} else {
+						feedbackMaxWorkers = pool.maxWorkers * 8 / 7
+						DC = false
 					}
 
-					if feedbackMaxWorkers < pool.maxWorkers {
-						feedbackMaxWorkers = pool.maxWorkers
+					if feedbackMaxWorkers < initWorkers {
+						feedbackMaxWorkers = initWorkers
 					}
 					if feedbackMaxWorkers > pool.jobCacheQueueLen {
 						feedbackMaxWorkers = pool.jobCacheQueueLen
 					}
 					// feedback worker numbers
 
-					fmt.Printf("\r Start at: %s, time cost: %s, average speed: %d, read-time speed: %d, current workers: %d, done jobs: %d     ", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, pool.maxWorkers, pool.doneJobs)
+					fmt.Printf("\r Start at: %s, time cost: %s, average speed: %d, read-time speed: %d, current workers: %d, done jobs: %d     ", tStart.Format("15:04:05.000"), costDuration.String(), speed, realtimeSpeed, feedbackMaxWorkers, pool.doneJobs)
 					pool.feedbackWorkers(feedbackMaxWorkers)
 				}
 
