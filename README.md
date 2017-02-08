@@ -30,7 +30,21 @@ golang scanner framework, with goroutines pool and automatically adjusting the s
 pool := NewGoroutinePool(1000, 20000, true)
 ```
 
-#### config golang env
+#### Cross compilation (Best Choice)
+
+```
+GOOS=linux GOARCH=amd64 go build -v scanner.go pool.go
+```
+
+#### Just Run
+
+```
+./scanner
+```
+
+---
+
+#### Run with new Golang Env
 
 ```
 sudo locale-gen zh_CN.UTF-8
@@ -44,17 +58,11 @@ echo 'GOPATH=/tmp' >> ~/.profile
 . ~/.profile
 
 go get github.com/pborman/uuid
-```
-#### start scanner
 
-```
-> go run scanner.go pool.go
-
-# or
-# > go build scanner.go pool.go
+go run scanner.go pool.go
 ```
 
-#### build in docker
+#### Run with docker
 
 ```
 $ git clone https://github.com/jmpews/goscan.git
@@ -62,8 +70,3 @@ $ cd goscan/
 $ docker run --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp golang:1.7 go get github.com/pborman/uuid && go build -v scanner.go pool.go
 ```
 
-#### cross compilation
-
-```
-GOOS=linux GOARCH=amd64 go build -v scanner.go pool.go
-```
